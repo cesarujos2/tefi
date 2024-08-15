@@ -1,5 +1,5 @@
 
-let url
+let token: string | null = null
 async function tefiRequest(method: string, args: any): Promise<any> {
     let url = process.env.URL_API_TEFI
     if (!url) return
@@ -33,6 +33,9 @@ async function tefiRequest(method: string, args: any): Promise<any> {
 }
 
 export async function GetToken() {
+    if (token) return token
+
+    console.log("Obteniendo token...")
     const response = await tefiRequest("login", {
         'user_auth': {
             'user_name': process.env.TEFI_USER,
@@ -41,7 +44,8 @@ export async function GetToken() {
         'application_name': process.env.TEFI_NAME,
         'name_value_list': {}
     })
-    return response.id ?? ""
+    token = response.id
+    return token ?? ""
 }
 
 export async function GetPDF(idFitac: string, templateId: string) {
@@ -74,8 +78,27 @@ export async function GetPDF(idFitac: string, templateId: string) {
         }
 
         const data = await response.arrayBuffer()
+
+        const cookies = parseCookie(response.headers.getSetCookie()[0])
+        if(cookies["loginErrorMessage"] && cookies["loginErrorMessage"] == 'LBL_SESSION_EXPIRED'){
+            console.log('Reautenticando...')
+            token = null
+            return GetPDF(idFitac, templateId)
+        }
         return data
     } catch (error) {
         console.error('Error making the request:', error);
     }
+}
+
+function parseCookie(cookieString: string) {
+    let cookieObject: { [key: string]: string } = {};
+    let cookieArray: string[] = cookieString.split('; ');
+    
+    cookieArray.forEach(cookie => {
+        let [key, value]: string[] = cookie.split('=');
+        cookieObject[key] = value;
+    });
+
+    return cookieObject;
 }
