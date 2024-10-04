@@ -19,12 +19,21 @@ export default class SignPDF {
     private certificate: Buffer;
     private imagen: Buffer;
     private passphrase: string;
+    private settings: SettingVisibleSignature = {
+        signatureY: 240,
+        maxTextWidth: 90,
+        fontSize: 6,
+        gap: 5,
+        imageWidth: 70,
+        signatureX: "right"
+    }
 
-    constructor(pdfFile: Buffer, certFile: Buffer, passphrase: string, imageFile: Buffer) {
+    constructor(pdfFile: Buffer, certFile: Buffer, passphrase: string, imageFile: Buffer, settings: Partial<SettingVisibleSignature>) {
         this.pdfDoc = pdfFile;
         this.certificate = certFile;
         this.passphrase = passphrase;
         this.imagen = imageFile;
+        this.settings = { ...this.settings, ...settings}
     }
 
     async sign(): Promise<Buffer> {
@@ -130,47 +139,73 @@ export default class SignPDF {
         }
         return buf;
     }
-
+  
     private async addVisibleSignature(signatureImageBytes: Buffer): Promise<void> {
         const loadedPdf = await PDFDocument.load(this.pdfDoc);
         const pages = loadedPdf.getPages();
         const firstPage = pages[0];
 
-        const signatureImage = await loadedPdf.embedPng(signatureImageBytes);
-
         const { width, height } = firstPage.getSize();
 
-        const imageWidth = 50;
-        const imageHeight = 50;
-
-        const signatureX = width - 190
-        const signatureY = 190
-
-        firstPage.drawImage(signatureImage, {
-            x: signatureX,
-            y: signatureY,
-            width: imageWidth,
-            height: imageHeight,
-        });
-
-        // Obtener la fuente para dibujar el texto
+        const signatureImage = await loadedPdf.embedPng(signatureImageBytes);
         const font = await loadedPdf.embedFont(StandardFonts.HelveticaBold);
         const fontRegular = await loadedPdf.embedFont(StandardFonts.Helvetica);
 
-        // Definir los textos que se van a escribir
+
         const signerName = this.getSignerName()
         const reason = "Soy el autor del documento";
         const date = new Date().toLocaleString('es-PE', { timeZone: 'America/Lima' });
 
-        const textX = signatureX + imageWidth + 5;
-        let textY = signatureY + 40;
 
-        const maxTextWidth = 130;
+        let signatureY = this.settings.signatureY
+        let maxTextWidth = this.settings.maxTextWidth;
+        let fontSize = this.settings.fontSize
+        let gap = this.settings.gap
+        let imageWidth = this.settings.imageWidth;
+        let signatureX
+        switch(this.settings.signatureX){
+            case "left":
+                signatureX = 2
+                break;
+            case "right":
+                signatureX = width - (maxTextWidth + gap + imageWidth)
+                break;
+            case "center":
+                signatureX = width / 2 - (maxTextWidth + gap + imageWidth) / 2
 
-        textY -= 10 * this.drawTextWithWrapping(firstPage, 'Firmado digitalmente por:', textX, textY, fontRegular, 8, maxTextWidth);
-        textY -= 10 * this.drawTextWithWrapping(firstPage, signerName, textX, textY, font, 8, maxTextWidth);
-        textY -= 10 * this.drawTextWithWrapping(firstPage, `Motivo: ${reason}`, textX, textY, fontRegular, 8, maxTextWidth);
-        textY -= 10 * this.drawTextWithWrapping(firstPage, `Fecha: ${date}`, textX, textY, fontRegular, 8, maxTextWidth);
+        }
+
+        if (imageWidth == 0) gap = 2
+        const textX = signatureX + imageWidth + gap;
+        let textY = signatureY - (fontSize + 2);
+
+        textY -= (fontSize + 2) * this.drawTextWithWrapping(firstPage, 'Firmado digitalmente por:', textX, textY, fontRegular, fontSize, maxTextWidth);
+        textY -= (fontSize + 2) * this.drawTextWithWrapping(firstPage, signerName, textX, textY, font, fontSize, maxTextWidth);
+        textY -= (fontSize + 2) * this.drawTextWithWrapping(firstPage, `Motivo: ${reason}`, textX, textY, fontRegular, fontSize, maxTextWidth);
+        this.drawTextWithWrapping(firstPage, `Fecha: ${date}`, textX, textY, fontRegular, fontSize, maxTextWidth);
+
+        let imageHeight = imageWidth * signatureImage.height / signatureImage.width
+
+        let imageX
+        let imageY
+
+        if (imageHeight >= (signatureY - textY)) {
+            imageHeight = (signatureY - textY)
+            imageWidth = imageHeight * signatureImage.width / signatureImage.height
+            imageY = signatureY - imageHeight
+            imageX = textX - gap - imageWidth
+        } else {
+            imageX = signatureX
+            imageY = ((signatureY - textY) / 2) - (imageHeight/2) + textY
+        }
+
+        firstPage.drawImage(signatureImage, {
+            x: imageX,
+            y: imageY,
+            width: imageWidth,
+            height: imageHeight,
+            opacity: 0.9,
+        });
 
         const pdfBytes = await loadedPdf.save({ useObjectStreams: false });
 
@@ -217,7 +252,13 @@ export default class SignPDF {
 
         return lineCount;
     }
+}
 
-
-
+export interface SettingVisibleSignature {
+  signatureY: number;
+  maxTextWidth: number;
+  fontSize: number;
+  gap: number;
+  imageWidth: number;
+  signatureX: "center" | "left" | "right";
 }
