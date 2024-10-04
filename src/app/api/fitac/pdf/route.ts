@@ -1,4 +1,4 @@
-import SignPDF from "@/services/Sign";
+import SignPDF, { SettingVisibleSignature } from "@/services/Sign";
 import { GetPDF } from "@/services/tefiAPI";
 import { NextRequest, NextResponse } from "next/server";
 import fs from 'fs'
@@ -40,25 +40,25 @@ interface BodyPDF {
     idTemplate: string;
     certificate: string;
     passphrase: string;
+    settings?: Partial<SettingVisibleSignature>
 }
 
 
 export async function POST(request: NextRequest) {
     try {
-        const { idFitac, idTemplate, certificate, passphrase } = await request.json() as BodyPDF
+        const { idFitac, idTemplate, certificate, passphrase, settings } = await request.json() as BodyPDF
         if (!idFitac || !idTemplate || !certificate || !passphrase) throw new Error("Body incomplete!")
 
         let pdfArrayBuffer = await GetPDF(idFitac, idTemplate)
         if (!pdfArrayBuffer) throw new Error("No existe pdf")
         const pdfBuffer = Buffer.from(pdfArrayBuffer);
-        
-        
+
         const certificateFile = base64ToBuffer(certificate)
 
         const imagePath = path.join(process.cwd(), 'public', 'escudo.png');
         const ImageFile = fs.readFileSync(imagePath)
-        
-        const signPDF = new SignPDF(pdfBuffer, certificateFile, passphrase, ImageFile)
+
+        const signPDF = new SignPDF(pdfBuffer, certificateFile, passphrase, ImageFile, settings ?? {})
         const signedPDF = await signPDF.sign()
 
         let response = new NextResponse(signedPDF, {
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
 
     } catch (error: any) {
         return NextResponse.json({
-            error: error
+            error: error.message
         }, { status: 500 });
     }
 
