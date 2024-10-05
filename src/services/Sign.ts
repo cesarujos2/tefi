@@ -9,6 +9,7 @@ import {
     rgb,
     PDFPage,
     PDFFont,
+    PDFObject,
 } from "pdf-lib";
 import signpdf from '@signpdf/signpdf';
 import { P12Signer } from '@signpdf/signer-p12';
@@ -38,13 +39,31 @@ export default class SignPDF {
 
     async sign(): Promise<Buffer> {
         await this.addVisibleSignature(this.imagen)
-        await this._addPlaceholder();
+
+        const annotations = await this.extractAnnotations()
+        await this._addPlaceholder(annotations);
 
         const signer = new P12Signer(this.certificate, { passphrase: this.passphrase });
 
         const pdfSigned = await signpdf.sign(this.pdfDoc, signer);
 
         return pdfSigned;
+    }
+
+    private async extractAnnotations(): Promise<any[]> {
+        const pdfDoc = await PDFDocument.load(this.pdfDoc);
+        const pages = pdfDoc.getPages();
+        const annotations = [];
+
+        for (const page of pages) {
+            const annots = page.node.Annots();  // Extrae las anotaciones
+            if (annots) {
+                // Resuelve los PDFRef en anotaciones reales
+                const resolvedAnnots = annots.asArray().map(annot => pdfDoc.context.lookup(annot));
+                annotations.push(resolvedAnnots);
+            }
+        }
+        return annotations;
     }
 
     private getSignerName(): string {
@@ -78,7 +97,7 @@ export default class SignPDF {
 
 
 
-    private async _addPlaceholder(): Promise<void> {
+    private async _addPlaceholder(annotations: (PDFObject | undefined)[][]): Promise<void> {
         const loadedPdf = await PDFDocument.load(this.pdfDoc);
         const ByteRange = PDFArray.withContext(loadedPdf.context);
         const DEFAULT_BYTE_RANGE_PLACEHOLDER = '**********';
@@ -115,7 +134,26 @@ export default class SignPDF {
 
         const widgetDictRef = loadedPdf.context.register(widgetDict);
 
-        pages[0].node.set(PDFName.of('Annots'), loadedPdf.context.obj([widgetDictRef]));
+        // Obtener las anotaciones existentes de la primera página
+        const existingAnnots = pages[0].node.Annots();
+        const allAnnots = existingAnnots ? [...existingAnnots.asArray()] : [];
+
+        // Iterar manualmente sobre las anotaciones resueltas y registrarlas en el contexto del PDF
+        annotations.forEach(annotationPage => {
+            annotationPage.forEach(annot => {
+                if (annot) {
+                    allAnnots.push(loadedPdf.context.register(annot));
+                }
+            });
+        });
+
+        // Añadir el widget de la firma
+        allAnnots.push(widgetDictRef);
+
+        // Asignar las anotaciones combinadas a la página del PDF
+        pages[0].node.set(PDFName.of('Annots'), loadedPdf.context.obj(allAnnots));
+
+        //pages[0].node.set(PDFName.of('Annots'), loadedPdf.context.obj([widgetDictRef, ...annotations]));
 
         loadedPdf.catalog.set(
             PDFName.of('AcroForm'),
