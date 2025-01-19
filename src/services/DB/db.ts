@@ -69,7 +69,85 @@ class Database {
 
     return dataFitac;
 }
+
+public async getConsultores(){
+  const query = `
+  SELECT
+	ROW_NUMBER() OVER (ORDER BY ac.cod_consultor_c) AS 'N°',
+	ac.cod_consultor_c as 'Codigo de consultora',
+	a.name as 'Razón social',
+	/* a.billing_address_country as 'País',*/
+	a.billing_address_state as 'Departamento / Provincia',
+	a.billing_address_city as 'Distrito',
+	/*a.billing_address_street as 'Dirección',*/
+	UPPER(ac.tipo_doc_administrado_c) as 'Tipo de Documento',
+	ac.nro_doc_identificacion_c as 'Número de identificacion',
+	/*a.phone_fax as 'Número de celular de la empresa',*/
+	ea.email_address as 'Correo',
+	/*ac.url_inscripcion_c as 'Documento de inscripción',*/
+	CASE 
+        WHEN ac.status_c = 'active' THEN 'Habilitado'
+        WHEN ac.status_c = 'inactive' THEN 'Inhabilitado'
+        ELSE 'Desconocido'
+    END AS 'Estado de Registro',
+    DATE_FORMAT(ac.fecha_presentacion_c, '%d/%m/%Y') AS 'Fecha_Registro',
+	c.first_name as 'Nombres',
+	c.last_name as 'Apellidos',
+	c.title as 'Titulo',
+	/*c.phone_mobile as 'Celular',*/
+	/*ea2.email_address as 'Correo',*/
+	/*c.primary_address_country as 'País',*/
+	/*c.primary_address_state as 'Departamento / Provincia',*/
+	/*c.primary_address_city as 'Distrito',*/
+	/*c.primary_address_street as 'Dirección',*/
+	/*cc.ubigeo_contact_c as 'Ubigeo',*/
+	UPPER(cc.tipo_doc_contac_c ) as 'Tipo de documento',
+	cc.doc_ident_contact_c as 'Documento de identidad',
+	cc.tuitionnumber_c as 'Número de colegiatura',
+	/*cc.url_inscripcion_c as 'URL CV',*/
+	CASE 
+        WHEN cc.status_c = 'active' THEN 'Activo'
+        WHEN cc.status_c = 'inactive' THEN 'Inactivo'
+        ELSE 'Desconocido'
+    END AS 'Estado'
+FROM accounts a
+LEFT JOIN accounts_cstm ac ON ac.id_c = a.id
+LEFT JOIN email_addr_bean_rel eabr on eabr.bean_id = a.id and eabr.deleted = 0
+LEFT JOIN email_addresses ea on ea.id = eabr.email_address_id and ea.deleted = 0
+RIGHT JOIN accounts_contacts ac2 ON ac2.account_id = a.id and ac2.deleted = 0
+RIGHT JOIN contacts c on c.id = ac2.contact_id  and c.deleted = 0 and c.deleted = 0
+LEFT JOIN contacts_cstm cc on cc.id_c = c.id 
+LEFT JOIN email_addr_bean_rel eabr2 on eabr2.bean_id = c.id and eabr2.deleted = 0
+LEFT JOIN email_addresses ea2 on ea2.id = eabr2.email_address_id and ea2.deleted = 0
+WHERE ac.tipo_administrado_c LIKE '%consultora%' and a.deleted = 0 and ac.status_c != '' and ac.cod_consultor_c != ''
+ORDER BY ac.cod_consultor_c ASC 
+  `
+
+  const dataConsultores = await tefiDB(query) as ConsultoresInfo[];
+  return dataConsultores;
 }
+}
+
+interface ConsultoresInfo {
+  'N°': number;
+  'Codigo de consultora': string;
+  'Razón social': string;
+  'Departamento / Provincia': string;
+  Distrito: string;
+  'Tipo de Documento': string;
+  'Número de identificacion': string;
+  Correo: string;
+  'Estado de Registro': string;
+  Fecha_Registro: string;
+  Nombres: string;
+  Apellidos: string;
+  Titulo: string;
+  'Tipo de documento': string;
+  'Documento de identidad': string;
+  'Número de colegiatura': string;
+  Estado: string;
+}
+
 
 // Exportar una instancia de la clase
 export const db = Database.getInstance();
