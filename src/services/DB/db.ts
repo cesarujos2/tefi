@@ -73,7 +73,7 @@ class Database {
 public async getConsultores(){
   const query = `
   SELECT
-	ROW_NUMBER() OVER (ORDER BY ac.fecha_presentacion_c ASC, ac.cod_consultor_c ASC) AS 'N°',
+	DENSE_RANK() OVER (ORDER BY ac.fecha_presentacion_c ASC, ac.cod_consultor_c ASC) AS 'N°',
 	ac.cod_consultor_c as 'Codigo de consultora',
 	a.name as 'Razón social',
 	/* a.billing_address_country as 'País',*/
