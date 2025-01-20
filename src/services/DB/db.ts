@@ -73,7 +73,7 @@ class Database {
 public async getConsultores(){
   const query = `
   SELECT
-	ROW_NUMBER() OVER (ORDER BY ac.cod_consultor_c) AS 'N°',
+	ROW_NUMBER() OVER (ORDER BY ac.fecha_presentacion_c ASC, ac.cod_consultor_c ASC) AS 'N°',
 	ac.cod_consultor_c as 'Codigo de consultora',
 	a.name as 'Razón social',
 	/* a.billing_address_country as 'País',*/
@@ -120,7 +120,6 @@ LEFT JOIN contacts_cstm cc on cc.id_c = c.id
 LEFT JOIN email_addr_bean_rel eabr2 on eabr2.bean_id = c.id and eabr2.deleted = 0
 LEFT JOIN email_addresses ea2 on ea2.id = eabr2.email_address_id and ea2.deleted = 0
 WHERE ac.tipo_administrado_c LIKE '%consultora%' and a.deleted = 0 and ac.status_c != '' and ac.cod_consultor_c != ''
-ORDER BY ac.cod_consultor_c ASC 
   `
 
   const dataConsultores = await tefiDB(query) as ConsultoresInfo[];
