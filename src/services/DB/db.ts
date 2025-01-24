@@ -112,12 +112,12 @@ public async getConsultores(){
     END AS 'Estado'
 FROM accounts a
 LEFT JOIN accounts_cstm ac ON ac.id_c = a.id
-LEFT JOIN email_addr_bean_rel eabr on eabr.bean_id = a.id and eabr.deleted = 0
+LEFT JOIN email_addr_bean_rel eabr on eabr.bean_id = a.id and eabr.deleted = 0 and eabr.primary_address = 1
 LEFT JOIN email_addresses ea on ea.id = eabr.email_address_id and ea.deleted = 0
 RIGHT JOIN accounts_contacts ac2 ON ac2.account_id = a.id and ac2.deleted = 0
 RIGHT JOIN contacts c on c.id = ac2.contact_id  and c.deleted = 0 and c.deleted = 0
 LEFT JOIN contacts_cstm cc on cc.id_c = c.id 
-LEFT JOIN email_addr_bean_rel eabr2 on eabr2.bean_id = c.id and eabr2.deleted = 0
+LEFT JOIN email_addr_bean_rel eabr2 on eabr2.bean_id = c.id and eabr2.deleted = 0 and eabr2.primary_address = 1
 LEFT JOIN email_addresses ea2 on ea2.id = eabr2.email_address_id and ea2.deleted = 0
 WHERE ac.tipo_administrado_c LIKE '%consultora%' and a.deleted = 0 and ac.status_c != '' and ac.cod_consultor_c != ''
   `
