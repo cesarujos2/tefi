@@ -119,7 +119,7 @@ RIGHT JOIN contacts c on c.id = ac2.contact_id  and c.deleted = 0 and c.deleted 
 LEFT JOIN contacts_cstm cc on cc.id_c = c.id 
 LEFT JOIN email_addr_bean_rel eabr2 on eabr2.bean_id = c.id and eabr2.deleted = 0 and eabr2.primary_address = 1
 LEFT JOIN email_addresses ea2 on ea2.id = eabr2.email_address_id and ea2.deleted = 0
-WHERE ac.tipo_administrado_c LIKE '%consultora%' and a.deleted = 0 and ac.status_c != '' and ac.cod_consultor_c != ''
+WHERE ac.tipo_administrado_c LIKE '%consultora%' and cc.rol_c LIKE "%consultor%" and a.deleted = 0 and ac.status_c != '' and ac.cod_consultor_c != ''
   `
 
   const dataConsultores = await tefiDB(query) as ConsultoresInfo[];
