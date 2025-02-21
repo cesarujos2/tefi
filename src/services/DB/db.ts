@@ -100,12 +100,7 @@ SELECT
     c.title as 'Titulo',
     UPPER(cc.tipo_doc_contac_c ) as 'Tipo de documento',
     cc.doc_ident_contact_c as 'Documento de identidad',
-    cc.tuitionnumber_c as 'Número de colegiatura',
-    CASE 
-        WHEN cc.status_c = 'active' THEN 'Activo'
-        WHEN cc.status_c = 'inactive' THEN 'Inactivo'
-        ELSE 'Desconocido'
-    END AS 'Estado'
+    cc.tuitionnumber_c as 'Número de colegiatura'
 FROM accounts a
 LEFT JOIN accounts_cstm ac ON ac.id_c = a.id
 LEFT JOIN email_addr_bean_rel eabr on eabr.bean_id = a.id and eabr.deleted = 0 and eabr.primary_address = 1
@@ -146,7 +141,6 @@ interface ConsultoresInfo {
   'Tipo de documento': string;
   'Documento de identidad': string;
   'Número de colegiatura': string;
-  Estado: string;
 }
 
 
